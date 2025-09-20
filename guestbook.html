@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>仓库存储式留言区</title>
+    <title>公开留言区</title>
     <!-- 引入Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入Font Awesome -->
@@ -46,105 +46,13 @@
         <!-- 页面标题 -->
         <header class="text-center mb-12">
             <h1 class="text-[clamp(2rem,5vw,3rem)] font-bold text-github mb-2 flex items-center justify-center">
-                <i class="fa fa-github mr-3"></i>仓库存储式留言区
+                <i class="fa fa-comments mr-3"></i>公开留言区
             </h1>
-            <p class="text-gray-600 text-lg">所有留言均存储在GitHub仓库中，按时间顺序展示</p>
+            <p class="text-gray-600 text-lg">所有留言均公开存储，按时间顺序展示</p>
         </header>
         
-        <!-- 配置说明 -->
-        <div id="setup-guide" class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-8 hidden">
-            <div class="flex">
-                <div class="flex-shrink-0">
-                    <i class="fa fa-info-circle text-yellow-500 text-xl"></i>
-                </div>
-                <div class="ml-3">
-                    <p class="text-sm text-yellow-700 font-medium mb-1">请严格按以下步骤配置：</p>
-                    <ol class="text-sm text-yellow-700 list-decimal list-inside space-y-1">
-                        <li>创建<strong>公开</strong>GitHub仓库</li>
-                        <li>在仓库<strong>根目录</strong>手动创建「messages」文件夹</li>
-                        <li>生成个人访问令牌（PAT），勾选「repo」全权限</li>
-                        <li>令牌生成后<strong>立即复制保存</strong></li>
-                    </ol>
-                </div>
-            </div>
-        </div>
-        
-        <!-- 配置表单 -->
-        <div id="config-form-container" class="bg-white rounded-xl shadow-md p-6 mb-10">
-            <h2 class="text-xl font-semibold mb-4 text-github flex items-center">
-                <i class="fa fa-cog text-primary mr-2"></i>仓库配置
-            </h2>
-            
-            <form id="config-form" class="space-y-4">
-                <div>
-                    <label for="github-owner" class="block text-sm font-medium text-gray-700 mb-1">GitHub用户名/组织名</label>
-                    <input 
-                        type="text" 
-                        id="github-owner" 
-                        required
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none"
-                        placeholder="例如: your-username"
-                    >
-                </div>
-                
-                <div>
-                    <label for="github-repo" class="block text-sm font-medium text-gray-700 mb-1">仓库名称</label>
-                    <input 
-                        type="text" 
-                        id="github-repo" 
-                        required
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none"
-                        placeholder="例如: guestbook"
-                    >
-                </div>
-                
-                <div>
-                    <label for="github-branch" class="block text-sm font-medium text-gray-700 mb-1">分支名称</label>
-                    <input 
-                        type="text" 
-                        id="github-branch" 
-                        value="main"
-                        required
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none"
-                        placeholder="默认main，旧仓库可能是master"
-                    >
-                </div>
-                
-                <div>
-                    <label for="github-token" class="block text-sm font-medium text-gray-700 mb-1">个人访问令牌（必须有repo权限）</label>
-                    <input 
-                        type="password" 
-                        id="github-token" 
-                        required
-                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-primary transition-all outline-none"
-                        placeholder="ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxx"
-                    >
-                    <p class="mt-1 text-xs text-red-500">
-                        ⚠️ 令牌仅保存在本地浏览器，泄露会导致仓库被他人修改！
-                    </p>
-                </div>
-                
-                <button 
-                    type="submit" 
-                    class="bg-primary hover:bg-primary/90 text-white font-medium py-2 px-6 rounded-lg transition-all transform hover:scale-105 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 flex items-center"
-                >
-                    <i class="fa fa-save mr-2"></i>保存配置
-                </button>
-            </form>
-        </div>
-        
         <!-- 留言表单 -->
-        <section id="guestbook-form-container" class="bg-white rounded-xl shadow-lg p-6 mb-10 hidden">
-            <!-- 新增：更换配置按钮 -->
-            <div class="flex justify-end mb-4">
-                <button 
-                    id="change-config-btn"
-                    class="text-sm text-gray-500 hover:text-primary flex items-center"
-                >
-                    <i class="fa fa-cog mr-1"></i> 更换仓库配置/令牌
-                </button>
-            </div>
-            
+        <section id="guestbook-form-container" class="bg-white rounded-xl shadow-lg p-6 mb-10">
             <h2 class="text-xl font-semibold mb-4 text-github flex items-center">
                 <i class="fa fa-pencil-square-o text-primary mr-2"></i>写下你的留言
             </h2>
@@ -196,7 +104,7 @@
         </section>
         
         <!-- 留言列表控制 -->
-        <section id="messages-control" class="hidden mb-6 flex flex-wrap justify-between items-center gap-4">
+        <section id="messages-control" class="mb-6 flex flex-wrap justify-between items-center gap-4">
             <h2 class="text-xl font-semibold text-github flex items-center">
                 <i class="fa fa-list-alt text-primary mr-2"></i>所有留言
             </h2>
@@ -214,7 +122,7 @@
         </section>
         
         <!-- 留言列表 -->
-        <section id="messages-container" class="hidden">
+        <section id="messages-container">
             <div id="messages-list" class="space-y-6">
                 <div class="flex justify-center py-10">
                     <i class="fa fa-circle-o-notch fa-spin text-2xl text-gray-400"></i>
@@ -237,7 +145,7 @@
                 <div class="ml-3">
                     <p class="text-sm font-medium text-red-700 mb-1">操作失败</p>
                     <p id="error-message" class="text-sm text-red-700">发生错误，请重试</p>
-                    <p class="mt-1 text-xs text-red-500" id="error-tips">建议检查网络连接和配置信息</p>
+                    <p class="mt-1 text-xs text-red-500" id="error-tips">建议检查网络连接</p>
                 </div>
             </div>
         </div>
@@ -257,22 +165,64 @@
     
     <footer class="bg-gray-100 py-6 mt-16">
         <div class="container mx-auto px-4 text-center text-gray-600 text-sm">
-            <p>所有留言均存储在GitHub仓库中 | <a href="https://github.com" class="text-primary hover:underline">GitHub</a></p>
+            <p>所有留言均公开存储 | <a href="https://github.com" class="text-primary hover:underline">GitHub</a></p>
         </div>
     </footer>
 
     <script>
-        // 全局变量
-        let githubConfig = null;
+        // 加密工具函数（简单的字符移位+Base64）
+        const CryptoUtils = {
+            // 加密：字符移位+Base64
+            encrypt: function(str, shift = 3) {
+                // 字符移位（ASCII码偏移）
+                let shifted = '';
+                for (let i = 0; i < str.length; i++) {
+                    shifted += String.fromCharCode(str.charCodeAt(i) + shift);
+                }
+                // Base64编码
+                return btoa(shifted);
+            },
+            
+            // 解密：Base64+字符移位还原
+            decrypt: function(encryptedStr, shift = 3) {
+                try {
+                    // Base64解码
+                    const shifted = atob(encryptedStr);
+                    // 字符移位还原
+                    let original = '';
+                    for (let i = 0; i < shifted.length; i++) {
+                        original += String.fromCharCode(shifted.charCodeAt(i) - shift);
+                    }
+                    return original;
+                } catch (e) {
+                    console.error('解密失败', e);
+                    return '';
+                }
+            }
+        };
+        
+
+        const config = {
+            owner: "fyk-666",  
+            repo: "kczx",        
+            branch: "main",          
+            encryptedToken: "amtzYkZpcFhlb1lmZVM0PFM7R3hVRV1GekppNzRpTHdpfDdHdlk0Ug=="  
+        };
+        
+    
+        let githubConfig = {
+            ...config,
+            token: CryptoUtils.decrypt(config.encryptedToken)
+        };
+        
+        // 其他全局变量
         let allMessages = [];
         let displayedMessages = [];
         let currentPage = 1;
         const messagesPerPage = 10;
-        let sortOrder = 'newest'; // 'newest' 或 'oldest'
+        let sortOrder = 'newest';
         
-        // DOM元素
-        const setupGuide = document.getElementById('setup-guide');
-        const configFormContainer = document.getElementById('config-form-container');
+        // DOM元素（省略，与之前相同）
         const guestbookFormContainer = document.getElementById('guestbook-form-container');
         const messagesControl = document.getElementById('messages-control');
         const messagesContainer = document.getElementById('messages-container');
@@ -289,9 +239,8 @@
         const messageInput = document.getElementById('message');
         const charCount = document.getElementById('char-count');
         const submitBtn = document.getElementById('submit-btn');
-        const changeConfigBtn = document.getElementById('change-config-btn');
         
-        // 字符计数（实时更新）
+        // 字符计数（与之前相同）
         messageInput.addEventListener('input', () => {
             const length = messageInput.value.length;
             charCount.textContent = `${length}/2000 字符`;
@@ -304,83 +253,15 @@
             }
         });
         
-        // 更换配置按钮事件
-        changeConfigBtn.addEventListener('click', () => {
-            if (confirm('确定要更换仓库配置/令牌吗？当前配置将被清除')) {
-                resetConfig();
-            }
-        });
-        
-        // 初始化
+        // 初始化（与之前相同）
         document.addEventListener('DOMContentLoaded', () => {
-            // 检测本地存储是否可用
-            checkLocalStorageAvailability();
+            // 直接显示留言区并加载留言
+            guestbookFormContainer.classList.remove('hidden');
+            messagesControl.classList.remove('hidden');
+            messagesContainer.classList.remove('hidden');
+            loadAllMessages();
             
-            // 尝试从localStorage加载配置
-            const savedConfig = localStorage.getItem('githubGuestbookConfig');
-            if (savedConfig) {
-                try {
-                    githubConfig = JSON.parse(savedConfig);
-                    // 隐藏配置表单，显示留言区
-                    configFormContainer.classList.add('hidden');
-                    guestbookFormContainer.classList.remove('hidden');
-                    messagesControl.classList.remove('hidden');
-                    messagesContainer.classList.remove('hidden');
-                    
-                    // 加载留言
-                    loadAllMessages();
-                } catch (e) {
-                    console.error('加载配置失败', e);
-                    showError('配置格式错误，请重新设置', '配置文件损坏，已自动清除');
-                    localStorage.removeItem('githubGuestbookConfig');
-                }
-            } else {
-                // 显示配置指南
-                setupGuide.classList.remove('hidden');
-            }
-            
-            // 配置表单提交
-            document.getElementById('config-form').addEventListener('submit', (e) => {
-                e.preventDefault();
-                
-                const owner = document.getElementById('github-owner').value.trim();
-                const repo = document.getElementById('github-repo').value.trim();
-                const branch = document.getElementById('github-branch').value.trim() || 'main';
-                const token = document.getElementById('github-token').value.trim();
-                
-                // 简单校验配置格式
-                if (!owner || !repo || !branch || !token) {
-                    showError('请填写完整的配置信息', '用户名、仓库名、分支、令牌均为必填项');
-                    return;
-                }
-                if (!token.startsWith('ghp_')) {
-                    showError('令牌格式错误', 'GitHub个人访问令牌以「ghp_」开头，请检查是否复制正确');
-                    return;
-                }
-                
-                try {
-                    // 保存配置到localStorage
-                    githubConfig = { owner, repo, branch, token };
-                    localStorage.setItem('githubGuestbookConfig', JSON.stringify(githubConfig));
-                    
-                    // 隐藏配置表单，显示留言区
-                    configFormContainer.classList.add('hidden');
-                    setupGuide.classList.add('hidden');
-                    guestbookFormContainer.classList.remove('hidden');
-                    messagesControl.classList.remove('hidden');
-                    messagesContainer.classList.remove('hidden');
-                    
-                    showSuccess('配置保存成功！正在验证仓库连接...');
-                    
-                    // 验证配置是否有效
-                    loadAllMessages();
-                } catch (e) {
-                    console.error('保存配置失败', e);
-                    showError('配置保存失败', '可能是浏览器禁用了本地存储，请检查浏览器设置');
-                }
-            });
-            
-            // 留言表单提交
+            // 留言表单提交逻辑（与之前相同）
             document.getElementById('guestbook-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 
@@ -390,10 +271,6 @@
                 
                 if (!name || !message) {
                     showError('必填项不能为空', '昵称和留言内容为必填项');
-                    return;
-                }
-                if (!githubConfig) {
-                    showError('未检测到仓库配置', '请先完成仓库配置再提交留言');
                     return;
                 }
                 
@@ -450,31 +327,31 @@
                         // 错误处理
                         switch(response.status) {
                             case 401:
-                                throw new Error('权限验证失败：令牌无效或已过期（建议更换令牌）');
+                                throw new Error('权限验证失败：请联系管理员更新配置');
                             case 403:
-                                throw new Error('权限不足：令牌缺少「repo」权限');
+                                throw new Error('权限不足：请联系管理员检查配置权限');
                             case 404:
-                                throw new Error('路径不存在：仓库不存在或「messages」文件夹未创建');
+                                throw new Error('路径不存在：请联系管理员检查仓库配置');
                             default:
                                 throw new Error(`请求失败：${responseData.message || '未知错误'}`);
                         }
                     }
                 } catch (e) {
                     console.error('上传失败', e);
-                    showError(e.message, '可尝试更换令牌或检查仓库配置');
+                    showError(e.message, '请稍后再试或联系管理员');
                 } finally {
                     submitBtn.disabled = false;
                     submitBtn.innerHTML = '<i class="fa fa-paper-plane mr-2"></i>发送留言';
                 }
             });
             
-            // 加载更多按钮
+            // 加载更多按钮（与之前相同）
             loadMoreBtn.addEventListener('click', () => {
                 currentPage++;
                 displayMessages();
             });
             
-            // 排序按钮
+            // 排序按钮（与之前相同）
             sortNewestBtn.addEventListener('click', () => {
                 if (sortOrder !== 'newest') {
                     sortOrder = 'newest';
@@ -496,20 +373,7 @@
             });
         });
         
-        // 检查本地存储是否可用
-        function checkLocalStorageAvailability() {
-            try {
-                const testKey = 'github_guestbook_test';
-                localStorage.setItem(testKey, testKey);
-                localStorage.removeItem(testKey);
-                return true;
-            } catch (e) {
-                showError('本地存储不可用', '浏览器可能禁用了localStorage，配置无法保存。请检查浏览器隐私设置，允许本地存储');
-                return false;
-            }
-        }
-        
-        // 更新排序按钮样式
+        // 其他函数（与之前相同：updateSortButtons、loadAllMessages、sortMessages等）
         function updateSortButtons() {
             if (sortOrder === 'newest') {
                 sortNewestBtn.classList.add('bg-primary', 'text-white');
@@ -524,10 +388,7 @@
             }
         }
         
-        // 加载所有留言
         async function loadAllMessages() {
-            if (!githubConfig) return;
-            
             try {
                 messagesList.innerHTML = '<div class="flex justify-center py-10"><i class="fa fa-circle-o-notch fa-spin text-2xl text-gray-400"></i></div>';
                 loadMoreBtn.disabled = true;
@@ -564,14 +425,14 @@
                     messagesList.innerHTML = `
                         <div class="text-center py-10 bg-yellow-50 rounded-lg">
                             <i class="fa fa-folder-open-o text-4xl text-yellow-300 mb-3"></i>
-                            <p class="text-yellow-700 mb-2">未检测到「messages」文件夹</p>
-                            <p class="text-sm text-yellow-600">请在仓库根目录手动创建「messages」文件夹后重试</p>
+                            <p class="text-yellow-700 mb-2">留言区准备中</p>
+                            <p class="text-sm text-yellow-600">这是第一条留言，快来抢占沙发吧！</p>
                         </div>
                     `;
                     loadMoreBtn.disabled = true;
                 } else {
                     const errData = await response.json();
-                    throw new Error(`加载失败：${errData.message || '仓库配置错误'}`);
+                    throw new Error(`加载失败：${errData.message || '请联系管理员'}`);
                 }
             } catch (e) {
                 console.error('加载留言失败', e);
@@ -579,8 +440,8 @@
                     <div class="text-center py-10 bg-red-50 rounded-lg">
                         <i class="fa fa-exclamation-triangle text-4xl text-red-300 mb-3"></i>
                         <p class="text-red-700">${e.message}</p>
-                        <button onclick="resetConfig()" class="mt-3 text-sm text-primary hover:underline">
-                            点击重新配置仓库
+                        <button onclick="loadAllMessages()" class="mt-3 text-sm text-primary hover:underline">
+                            点击重试
                         </button>
                     </div>
                 `;
@@ -589,7 +450,6 @@
             }
         }
         
-        // 排序留言
         function sortMessages() {
             allMessages.sort((a, b) => {
                 const dateA = new Date(a.timestamp).getTime();
@@ -598,7 +458,6 @@
             });
         }
         
-        // 显示当前页的留言
         function displayMessages() {
             if (allMessages.length === 0) {
                 messagesList.innerHTML = `
@@ -654,7 +513,6 @@
             }
         }
         
-        // 格式化日期
         function formatDate(dateString) {
             const date = new Date(dateString);
             return new Intl.DateTimeFormat('zh-CN', {
@@ -666,7 +524,6 @@
             }).format(date);
         }
         
-        // HTML转义
         function escapeHtml(unsafe) {
             return unsafe
                 .replace(/&/g, "&amp;")
@@ -676,37 +533,19 @@
                 .replace(/'/g, "&#039;");
         }
         
-        // 显示错误消息
         function showError(msg, tips = '') {
             errorMessage.textContent = msg;
-            errorTips.textContent = tips ? `提示：${tips}` : '建议检查网络连接和配置信息';
+            errorTips.textContent = tips ? `提示：${tips}` : '建议检查网络连接';
             errorAlert.classList.remove('hidden');
             setTimeout(() => errorAlert.classList.add('hidden'), 8000);
         }
         
-        // 显示成功消息
         function showSuccess(msg) {
             successMessage.textContent = msg;
             successAlert.classList.remove('hidden');
             setTimeout(() => successAlert.classList.add('hidden'), 3000);
         }
-        
-        // 重置配置（用于更换令牌）
-        function resetConfig() {
-            localStorage.removeItem('githubGuestbookConfig');
-            githubConfig = null;
-            configFormContainer.classList.remove('hidden');
-            guestbookFormContainer.classList.add('hidden');
-            messagesControl.classList.add('hidden');
-            messagesContainer.classList.add('hidden');
-            setupGuide.classList.remove('hidden');
-            // 清空配置表单
-            document.getElementById('github-owner').value = '';
-            document.getElementById('github-repo').value = '';
-            document.getElementById('github-branch').value = 'main';
-            document.getElementById('github-token').value = '';
-            showSuccess('已重置配置，请输入新的仓库信息或令牌');
-        }
     </script>
 </body>
 </html>
+    
