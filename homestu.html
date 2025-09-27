@@ -4,6 +4,46 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>昆承中学 官网</title>
+    <!-- 登录状态检查：仅允许已登录用户访问 -->
+    <script>
+        function checkLoginStatus() {
+            const loginInfo = localStorage.getItem('loginInfo');
+            // 未登录或登录信息不存在
+            if (!loginInfo) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            
+            // 检查登录是否过期（30天有效期）
+            const { expires } = JSON.parse(loginInfo);
+            if (new Date().getTime() >= expires) {
+                localStorage.removeItem('loginInfo'); // 清除过期信息
+                window.location.href = 'login.html';
+                return false;
+            }
+            return true;
+        }
+        
+        // 退出登录功能
+        function logout() {
+            localStorage.removeItem('loginInfo');
+            window.location.href = 'login.html';
+        }
+        
+        // 页面加载时强制检查，未登录则阻止显示内容
+        if (!checkLoginStatus()) {
+            document.write('<p class="text-center mt-10">请先登录...</p>');
+        } else {
+            // 显示当前登录用户
+            const { username } = JSON.parse(localStorage.getItem('loginInfo'));
+            document.addEventListener('DOMContentLoaded', () => {
+                const userElement = document.getElementById('current-user');
+                if (userElement) {
+                    userElement.textContent = username;
+                }
+            });
+        }
+    </script>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -72,19 +112,27 @@
     </style>
 </head>
 <body>
-    <header>
-        <div class="container">
-            <div id="branding">
-                <h1><span class="highlight">昆承中学</span> 官网</h1>
+    <header class="bg-gradient-to-r from-fbc2eb to-3b75da text-white py-4">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="text-2xl font-bold mb-4 md:mb-0">
+                    <span class="highlight">昆承中学</span> 官网
+                </div>
+                <nav>
+                    <ul class="flex flex-wrap justify-center gap-x-6 gap-y-2">
+                        <!-- 首页链接从 index.html 改为 home.html -->
+                        <li><a href="home.html" class="hover:underline">首页</a></li>
+                        <!-- 当前页高亮 -->
+                        <li><a href="homestu.html" class="font-bold underline">关于我们</a></li>
+                        <li><a href="guestbook.html" class="hover:underline">资源分享</a></li>
+                        <li><a href="#" class="hover:underline">学生目录</a></li>
+                        <!-- 新增退出登录按钮 -->
+                        <li><a href="javascript:logout()" class="touch-friendly hover:underline">退出登录</a></li>
+                        <!-- 新增当前登录用户显示 -->
+                        <li><span id="current-user" class="ml-2 text-sm opacity-90"></span></li>
+                    </ul>
+                </nav>
             </div>
-            <nav>
-                <ul>
-                    <li class="current"><a href="home.html">首页</a></li>
-                    <li><a href="homestu.html#">关于我们</a></li>
-                    <li><a href="home.html">资源分享</a></li>
-                    <li><a href="#">学生目录</a></li> 
-                </ul>
-            </nav>
         </div>
     </header>
 
