@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>昆承中学 官网</title>
+    <title>昆承中学 官网 - 首页</title>
     <style>
+        /* 保持原首页样式 */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -48,11 +49,14 @@
             color: #ffffff;
             font-weight: bold;
         }
+        .logout-btn {
+            cursor: pointer;
+        }
         section#showcase {
             min-height: 400px;
             background: url('showcase.jpg') no-repeat 0 -400px;
             text-align: center;
-            color: #000000; /* 将文字颜色改为黑色 */
+            color: #000000;
         }
         section#showcase h1 {
             margin-top: 100px;
@@ -72,6 +76,45 @@
     </style>
 </head>
 <body>
+    <script>
+        // 登录检查：仅允许已登录用户访问首页
+        function checkLoginStatus() {
+            const loginInfo = localStorage.getItem('loginInfo');
+            if (!loginInfo) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            
+            const {expires} = JSON.parse(loginInfo);
+            if (new Date().getTime() >= expires) {
+                localStorage.removeItem('loginInfo');
+                window.location.href = 'login.html';
+                return false;
+            }
+            return true;
+        }
+        
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('loginInfo');
+            window.location.href = 'login.html';
+        }
+        
+        // 未登录则强制跳转
+        if (!checkLoginStatus()) {
+            document.write('<p>请先登录...</p>');
+        } else {
+            // 显示当前登录用户
+            const {username} = JSON.parse(localStorage.getItem('loginInfo'));
+            document.addEventListener('DOMContentLoaded', () => {
+                const userElement = document.getElementById('current-user');
+                if (userElement) {
+                    userElement.textContent = username;
+                }
+            });
+        }
+    </script>
+
     <header>
         <div class="container">
             <div id="branding">
@@ -79,10 +122,13 @@
             </div>
             <nav>
                 <ul>
+                    <!-- 导航栏首页链接指向home.html -->
                     <li class="current"><a href="home.html">首页</a></li>
-                    <li><a href="homestu.html#">关于我们</a></li>
+                    <li><a href="homestu.html">关于我们</a></li>
                     <li><a href="guestbook.html">资源分享</a></li>
-                    <li><a href="#">学生目录</a></li> 
+                    <li><a href="#">学生目录</a></li>
+                    <li><a href="javascript:logout()" class="logout-btn">退出登录</a></li>
+                    <li><span id="current-user" style="color:white;margin-left:10px;"></span></li>
                 </ul>
             </nav>
         </div>
