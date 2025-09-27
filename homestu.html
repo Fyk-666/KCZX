@@ -3,48 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>昆承中学 官网</title>
-    <!-- 登录状态检查：仅允许已登录用户访问 -->
-    <script>
-        function checkLoginStatus() {
-            const loginInfo = localStorage.getItem('loginInfo');
-            // 未登录或登录信息不存在
-            if (!loginInfo) {
-                window.location.href = 'login.html';
-                return false;
-            }
-            
-            // 检查登录是否过期（30天有效期）
-            const { expires } = JSON.parse(loginInfo);
-            if (new Date().getTime() >= expires) {
-                localStorage.removeItem('loginInfo'); // 清除过期信息
-                window.location.href = 'login.html';
-                return false;
-            }
-            return true;
-        }
-        
-        // 退出登录功能
-        function logout() {
-            localStorage.removeItem('loginInfo');
-            window.location.href = 'login.html';
-        }
-        
-        // 页面加载时强制检查，未登录则阻止显示内容
-        if (!checkLoginStatus()) {
-            document.write('<p class="text-center mt-10">请先登录...</p>');
-        } else {
-            // 显示当前登录用户
-            const { username } = JSON.parse(localStorage.getItem('loginInfo'));
-            document.addEventListener('DOMContentLoaded', () => {
-                const userElement = document.getElementById('current-user');
-                if (userElement) {
-                    userElement.textContent = username;
-                }
-            });
-        }
-    </script>
+    <title>昆承中学 官网 - 关于我们</title>
     <style>
+        /* 统一使用自定义CSS，删除Tailwind冲突类 */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -87,12 +48,17 @@
         header .highlight, header .current a {
             color: #ffffff;
             font-weight: bold;
+            text-decoration: underline;
+        }
+        /* 修复导航栏hover样式 */
+        header a:hover {
+            text-decoration: underline;
         }
         section#showcase {
             min-height: 400px;
             background: url('showcase.jpg') no-repeat 0 -400px;
             text-align: center;
-            color: #000000; /* 将文字颜色改为黑色 */
+            color: #000000;
         }
         section#showcase h1 {
             margin-top: 100px;
@@ -109,37 +75,94 @@
             background-image: linear-gradient(to right, #fbc2eb, #3b75da);
             text-align: center;
         }
+        /* 未登录提示样式（美观化） */
+        .login-tip {
+            text-align: center;
+            margin-top: 100px;
+            font-size: 18px;
+            color: #333;
+            padding: 20px;
+            background-color: #fff;
+            width: 50%;
+            margin-left: auto;
+            margin-right: auto;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
     </style>
+    <!-- 登录检查脚本：调整执行逻辑，避免覆盖页面 -->
+    <script>
+        function checkLoginStatus() {
+            const loginInfo = localStorage.getItem('loginInfo');
+            if (!loginInfo) {
+                return false; // 未登录，后续处理
+            }
+            
+            const { expires } = JSON.parse(loginInfo);
+            if (new Date().getTime() >= expires) {
+                localStorage.removeItem('loginInfo');
+                return false; // 登录过期
+            }
+            return true; // 登录有效
+        }
+        
+        // 退出登录功能
+        function logout() {
+            localStorage.removeItem('loginInfo');
+            window.location.href = 'login.html';
+        }
+        
+        // 页面加载完成后执行（避免DOM未就绪导致的样式问题）
+        document.addEventListener('DOMContentLoaded', () => {
+            const isLoggedIn = checkLoginStatus();
+            if (!isLoggedIn) {
+                // 未登录：清空body内容，添加美观的登录提示（不使用document.write避免覆盖）
+                const body = document.body;
+                body.innerHTML = '';
+                const tipDiv = document.createElement('div');
+                tipDiv.className = 'login-tip';
+                tipDiv.innerHTML = `
+                    <p>请先登录才能访问此页面</p>
+                    <button onclick="window.location.href='login.html'" style="margin-top:15px; padding:8px 20px; background:#3b75da; color:white; border:none; border-radius:5px; cursor:pointer;">
+                        前往登录
+                    </button>
+                `;
+                body.appendChild(tipDiv);
+            } else {
+                // 已登录：显示当前用户名
+                const { username } = JSON.parse(localStorage.getItem('loginInfo'));
+                const userElement = document.getElementById('current-user');
+                if (userElement) {
+                    userElement.textContent = `（当前登录：${username}）`;
+                }
+            }
+        });
+    </script>
 </head>
 <body>
-    <header class="bg-gradient-to-r from-fbc2eb to-3b75da text-white py-4">
-        <div class="container mx-auto px-4">
-            <div class="flex flex-col md:flex-row justify-between items-center">
-                <div class="text-2xl font-bold mb-4 md:mb-0">
-                    <span class="highlight">昆承中学</span> 官网
-                </div>
-                <nav>
-                    <ul class="flex flex-wrap justify-center gap-x-6 gap-y-2">
-                        <!-- 首页链接从 index.html 改为 home.html -->
-                        <li><a href="home.html" class="hover:underline">首页</a></li>
-                        <!-- 当前页高亮 -->
-                        <li><a href="homestu.html" class="font-bold underline">关于我们</a></li>
-                        <li><a href="guestbook.html" class="hover:underline">资源分享</a></li>
-                        <li><a href="#" class="hover:underline">学生目录</a></li>
-                        <!-- 新增退出登录按钮 -->
-                        <li><a href="javascript:logout()" class="touch-friendly hover:underline">退出登录</a></li>
-                        <!-- 新增当前登录用户显示 -->
-                        <li><span id="current-user" class="ml-2 text-sm opacity-90"></span></li>
-                    </ul>
-                </nav>
+    <!-- 导航栏：还原自定义CSS匹配的结构，删除Tailwind冲突类 -->
+    <header>
+        <div class="container">
+            <div id="branding">
+                <h1><span class="highlight">昆承中学</span> 官网</h1>
             </div>
+            <nav>
+                <ul>
+                    <li><a href="home.html">首页</a></li>
+                    <li class="current"><a href="homestu.html">关于我们</a></li>
+                    <li><a href="guestbook.html">资源分享</a></li>
+                    <li><a href="#">学生目录</a></li>
+                    <li><a href="javascript:logout()">退出登录</a></li>
+                    <li><span id="current-user" style="font-size:14px; opacity:0.9;"></span></li>
+                </ul>
+            </nav>
         </div>
     </header>
 
     <section id="showcase">
         <div class="container">
             <h1>我们是谁？</h1>
-            <p>我们是昆承中学的同学,我们是一群热爱学习，热爱分享的学生。</p>
+            <p>我们是昆承中学的同学，我们是一群热爱学习、热爱分享的学生，致力于打造互助成长的校园氛围。</p>
         </div>
     </section>
 
