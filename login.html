@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>昆承中学官网 - 登录</title>
+    <style>
+        /* 保持原登录页样式 */
+        * {
+            margin: 0;
+            padding: 0;
+        }
+        html {
+            height: 100%;
+        }
+        body {
+            height: 100%;
+        }
+        .container {
+            height: 100%;
+            background-image: linear-gradient(to right, #fbc2eb, #a6c1ee);
+        }
+        .login-wrapper {
+            background-color: #fff;
+            width: 358px;
+            height: 480px;
+            border-radius: 15px;
+            padding: 0 50px;
+            position: relative;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+        }
+        .header {
+            font-size: 38px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 200px;
+        }
+        .input-item {
+            display: block;
+            width: 100%;
+            margin-bottom: 20px;
+            border: 0;
+            padding: 10px;
+            border-bottom: 1px solid rgb(128, 125, 125);
+            font-size: 15px;
+            outline: none;
+        }
+        .input-item::placeholder {
+            text-transform: uppercase;
+        }
+        .btn {
+            text-align: center;
+            padding: 10px;
+            width: 100%;
+            margin-top: 40px;
+            background-image: linear-gradient(to right, #a6c1ee, #4f90e6);
+            color: #fff;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+        .msg {
+            text-align: center; 
+            line-height: 88px;
+        }
+        a {
+            text-decoration-line: none;
+            color: #abc1ee;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-wrapper">
+            <div class="header">登录</div>
+            <div class="form-wrapper">
+                <input type="text" id="username" name="用户名" placeholder="用户名" class="input-item">
+                <input type="password" id="password" name="密码" placeholder="密码" class="input-item">
+                <div class="btn" onclick="checkLogin()">登录</div>
+            </div>
+            <div class="msg" id="message"></div>
+        </div>
+    </div>
+    <script>
+        // 若已登录，直接跳转到首页home.html
+        checkLoginStatus();
+        
+        function checkLoginStatus() {
+            const loginInfo = localStorage.getItem('loginInfo');
+            if (loginInfo) {
+                const {expires} = JSON.parse(loginInfo);
+                if (new Date().getTime() < expires) {
+                    window.location.href = 'home.html'; // 登录有效时跳转到真正首页
+                    return true;
+                } else {
+                    localStorage.removeItem('loginInfo');
+                }
+            }
+            return false;
+        }
+        
+        function checkLogin() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageElement = document.getElementById('message');
+
+            if ((username === 'admin' && password === '123456') || (username === 'kczx' && password === '114514')) {
+                // 计算30天后的过期时间
+                const thirtyDaysLater = new Date().getTime() + 30 * 24 * 60 * 60 * 1000;
+                localStorage.setItem('loginInfo', JSON.stringify({
+                    username: username,
+                    expires: thirtyDaysLater
+                }));
+                window.location.href = 'home.html'; // 登录成功跳转到真正首页
+            } else {
+                messageElement.innerText = '用户名或密码错误';
+            }
+        }
+    </script>
+</body>
+</html>
