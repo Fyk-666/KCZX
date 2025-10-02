@@ -116,6 +116,16 @@
                 from { opacity: 0; transform: translateY(10px); }
                 to { opacity: 1; transform: translateY(0); }
             }
+            /* 优化版骨架屏 */
+            .message-skeleton {
+                @apply bg-white rounded-xl shadow-md p-4 animate-pulse;
+            }
+            .lazy-load {
+                @apply opacity-0 transition-opacity 0.3s;
+            }
+            .lazy-load.loaded {
+                @apply opacity-1;
+            }
         }
     </style>
 </head>
@@ -357,14 +367,17 @@
                 owner: "fyk-666",  
                 repo: "kczx",        
                 branch: "main",          
-                encryptedToken: "amtzYkZpcFhlb1lmZVM0PFM7R3hVRV1GekppNzRpTHdpfDdHdlk0Ug=="  
+                encryptedToken: "amtzYkZpcFhlb1lmZVM0PFM7R3hVRV1GekppNzRpTHdpfDdHdlk0Ug==",
+                cacheExpire: 30 * 60 * 1000, // 缓存30分钟
+                pageSize: 10 // 每页10条
             };
             const githubConfig = { ...config, token: CryptoUtils.decrypt(config.encryptedToken) };
             
             // 全局变量
             let allMessages = [];
             let currentPage = 1;
-            const messagesPerPage = 10;
+            let totalMessages = 0;
+            let isLoading = false;
             let sortOrder = 'newest';
             let selectedImage = null;
             let compressedImage = null; // 压缩后的图片
@@ -624,7 +637,7 @@
                         compressedImage = null;
                         
                         showSuccess('留言发送成功！');
-                        loadAllMessages();
+                        loadMessages(1, true); // 强制刷新缓存
                     } catch (e) {
                         console.error('提交失败:', e);
                         showError(e.message, '请检查网络或联系管理员');
@@ -657,7 +670,7 @@
                         updateSortButtons();
                         sortMessages();
                         currentPage = 1;
-                        displayMessages();
+                        renderMessages(allMessages.slice(0, config.pageSize));
                     }
                 });
                 
@@ -667,41 +680,186 @@
                         updateSortButtons();
                         sortMessages();
                         currentPage = 1;
-                        displayMessages();
+                        renderMessages(allMessages.slice(0, config.pageSize));
                     }
                 });
             }
             
-            // 加载更多
-            if (dom.loadMoreBtn) {
-                dom.loadMoreBtn.addEventListener('click', () => {
-                    currentPage++;
-                    displayMessages();
+            // 【优化1：本地缓存工具】
+            const Cache = {
+                get(key) {
+                    const item = localStorage.getItem(key);
+                    if (!item) return null;
+                    const { data, time } = JSON.parse(item);
+                    // 检查缓存是否过期
+                    if (new Date().getTime() - time > config.cacheExpire) {
+                        localStorage.removeItem(key);
+                        return null;
+                    }
+                    return data;
+                },
+                set(key, data) {
+                    localStorage.setItem(key, JSON.stringify({
+                        data,
+                        time: new Date().getTime()
+                    }));
+                }
+            };
+
+            // 【优化2：带缓存的留言加载函数】
+            async function loadMessages(page = 1, forceRefresh = false) {
+                if (isLoading) return;
+                isLoading = true;
+                dom.loadMoreBtn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>加载中...';
+
+                try {
+                    // 先查缓存
+                    const cacheKey = `messages_page_${page}`;
+                    if (!forceRefresh) {
+                        const cached = Cache.get(cacheKey);
+                        if (cached) {
+                            allMessages = allMessages.concat(cached); // 合并缓存数据
+                            renderMessages(cached);
+                            isLoading = false;
+                            updateLoadMore();
+                            return;
+                        }
+                    }
+
+                    // 缓存未命中，请求GitHub API
+                    const filesRes = await fetchWithTimeout(
+                        `https://api.github.com/repos/${config.owner}/${config.repo}/contents/messages?ref=${config.branch}`,
+                        { headers: { 'Accept': 'application/vnd.github.v3+json' } },
+                        8000 // 8秒超时
+                    );
+
+                    if (!filesRes.ok) throw new Error(`API请求失败: ${filesRes.status}`);
+                    const allFiles = await filesRes.json();
+                    const jsonFiles = allFiles.filter(f => f.name.endsWith('.json')).reverse(); // 倒序（最新在前）
+                    totalMessages = jsonFiles.length;
+
+                    // 分页截取（只取当前页数据）
+                    const start = (page - 1) * config.pageSize;
+                    const end = start + config.pageSize;
+                    const currentFiles = jsonFiles.slice(start, end);
+
+                    // 批量请求当前页的留言内容（减少并发数）
+                    const messages = [];
+                    for (const file of currentFiles) { // 改用for循环限制并发，避免请求过于密集
+                        try {
+                            const msgRes = await fetchWithTimeout(file.download_url, {}, 5000);
+                            if (msgRes.ok) {
+                                const msg = await msgRes.json();
+                                messages.push(msg);
+                            }
+                        } catch (e) {
+                            console.warn(`跳过无效留言: ${file.name}`, e);
+                        }
+                    }
+
+                    // 缓存当前页数据
+                    Cache.set(cacheKey, messages);
+                    allMessages = allMessages.concat(messages); // 合并到全局数据
+                    renderMessages(messages);
+                } catch (e) {
+                    console.error('加载失败:', e);
+                    dom.messagesList.innerHTML = `
+                        <div class="text-center py-10 bg-red-50 rounded-lg">
+                            <i class="fa fa-exclamation-triangle text-4xl text-red-300 mb-3"></i>
+                            <p class="text-red-700 mb-2">${e.message}</p>
+                            <button onclick="loadMessages(1, true)" class="mt-3 px-4 py-2 bg-primary text-white rounded hover:bg-primary/90">
+                                重试加载
+                            </button>
+                        </div>
+                    `;
+                } finally {
+                    isLoading = false;
+                    updateLoadMore();
+                }
+            }
+
+            // 【优化3：排序留言】
+            function sortMessages() {
+                allMessages.sort((a, b) => {
+                    const timeA = new Date(a.timestamp).getTime();
+                    const timeB = new Date(b.timestamp).getTime();
+                    return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
                 });
             }
-            
-            // 带超时的fetch
-            function fetchWithTimeout(url, options, timeout = 10000) {
-                return Promise.race([
-                    fetch(url, options),
-                    new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('请求超时（超过10秒）')), timeout)
-                    )
-                ]);
+
+            // 【优化4：批量渲染留言（减少DOM操作）】
+            function renderMessages(messages) {
+                if (!dom.messagesList || !dom.loadMoreBtn) return;
+
+                if (allMessages.length === 0) {
+                    dom.messagesList.innerHTML = `
+                        <div class="text-center py-10 bg-gray-50 rounded-lg">
+                            <i class="fa fa-comment-o text-4xl text-gray-300 mb-3"></i>
+                            <p class="text-gray-500">还没有留言，快来写下第一条吧！</p>
+                        </div>
+                    `;
+                    dom.loadMoreBtn.disabled = true;
+                    dom.loadMoreBtn.innerHTML = '<i class="fa fa-check mr-2"></i>没有更多留言';
+                    return;
+                }
+
+                const fragment = document.createDocumentFragment(); // 文档片段，批量插入
+
+                messages.forEach(msg => {
+                    const el = document.createElement('div');
+                    el.className = 'bg-white rounded-xl shadow-md p-4 sm:p-6 hover:shadow-lg transition-shadow message-appear';
+                    
+                    let content = `<div class="text-gray-700 whitespace-pre-line">${escapeHtml(msg.message)}</div>`;
+                    if (msg.imageUrl) {
+                        // 使用缩略图懒加载（优先加载小图）
+                        const thumbnailUrl = msg.thumbnailUrl || msg.imageUrl; // 优先用缩略图
+                        content += `
+                            <div class="mt-3 rounded-lg overflow-hidden border border-gray-100">
+                                <div class="image-skeleton w-full" style="padding-top: 56.25%;"> <!-- 16:9比例占位 -->
+                                    <img 
+                                        data-src="${thumbnailUrl}" 
+                                        class="lazy-load image-preview absolute top-0 left-0 w-full h-full" 
+                                        alt="留言图片"
+                                        onclick="openImageModal('${msg.imageUrl}')"
+                                    >
+                                </div>
+                            </div>
+                        `;
+                    }
+                    
+                    el.innerHTML = `
+                        <div class="flex items-start justify-between mb-4">
+                            <div class="flex items-center">
+                                <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold mr-3">
+                                    ${msg.name.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <h3 class="font-semibold text-gray-900">${escapeHtml(msg.name)}</h3>
+                                </div>
+                            </div>
+                            <span class="text-sm text-gray-400">${formatDate(msg.timestamp)}</span>
+                        </div>
+                        ${content}
+                    `;
+                    fragment.appendChild(el);
+                });
+
+                dom.messagesList.appendChild(fragment); // 一次插入所有节点，减少重排
+                initLazyLoad(); // 初始化当前页的图片懒加载
             }
-            
-            // 【核心优化3：图片懒加载初始化】
-            function initLazyLoading() {
-                const lazyImages = document.querySelectorAll('img.lazy-load');
+
+            // 【优化5：图片懒加载初始化】
+            function initLazyLoad() {
+                const lazyImages = document.querySelectorAll('img.lazy-load:not(.loaded)');
                 if ('IntersectionObserver' in window) {
-                    const imageObserver = new IntersectionObserver((entries, observer) => {
+                    const observer = new IntersectionObserver((entries) => {
                         entries.forEach(entry => {
                             if (entry.isIntersecting) {
                                 const img = entry.target;
                                 img.src = img.dataset.src; // 加载真实图片
                                 img.classList.remove('lazy-load');
-                                img.classList.remove('image-skeleton');
-                                imageObserver.unobserve(img);
+                                img.classList.add('loaded');
+                                observer.unobserve(img); // 停止观察
                                 
                                 // 图片加载失败时显示占位图
                                 img.onerror = () => {
@@ -709,19 +867,19 @@
                                 };
                             }
                         });
-                    });
-                    
-                    lazyImages.forEach(img => imageObserver.observe(img));
+                    }, { rootMargin: '200px' }); // 提前200px开始加载
+
+                    lazyImages.forEach(img => observer.observe(img));
                 } else {
-                    // 降级处理：直接加载所有图片
+                    // 降级处理（兼容旧浏览器）
                     lazyImages.forEach(img => {
                         img.src = img.dataset.src;
                         img.classList.remove('lazy-load');
-                        img.classList.remove('image-skeleton');
+                        img.classList.add('loaded');
                     });
                 }
             }
-            
+
             // 【核心优化4：图片放大模态框】
             function initImageModal() {
                 // 关闭模态框
@@ -762,203 +920,53 @@
                 };
                 img.src = url;
             }
-            
-            // 加载所有留言
-            async function loadAllMessages() {
-                if (dom.messagesList) {
-                    dom.messagesList.innerHTML = '<div class="flex justify-center py-10"><i class="fa fa-circle-o-notch fa-spin text-2xl text-gray-400"></i></div>';
-                }
-                if (dom.loadMoreBtn) {
+
+            // 更新加载更多按钮状态
+            function updateLoadMore() {
+                if (!dom.loadMoreBtn) return;
+                if (currentPage * config.pageSize >= totalMessages) {
+                    dom.loadMoreBtn.innerHTML = '没有更多留言';
                     dom.loadMoreBtn.disabled = true;
-                    dom.loadMoreBtn.innerHTML = '<i class="fa fa-spinner fa-spin mr-2"></i>加载中...';
-                }
-                if (dom.messageCount) dom.messageCount.textContent = '加载中...';
-                
-                try {
-                    const res = await fetchWithTimeout(
-                        `https://api.github.com/repos/${githubConfig.owner}/${githubConfig.repo}/contents/messages?ref=${githubConfig.branch}`,
-                        { headers: { 'Accept': 'application/vnd.github.v3+json' } },
-                        10000
-                    );
-                    
-                    if (!res.ok) {
-                        if (res.status === 404) {
-                            allMessages = [];
-                            if (dom.messagesList) {
-                                dom.messagesList.innerHTML = `
-                                    <div class="text-center py-10 bg-yellow-50 rounded-lg">
-                                        <i class="fa fa-folder-open-o text-4xl text-yellow-300 mb-3"></i>
-                                        <p class="text-yellow-700 mb-2">留言区准备就绪</p>
-                                        <p class="text-sm text-yellow-600">还没有留言，快来写下第一条吧！</p>
-                                    </div>
-                                `;
-                            }
-                            if (dom.messageCount) dom.messageCount.textContent = '0 条留言';
-                            return;
-                        } else if (res.status === 403) {
-                            throw new Error('权限不足（403）：可能是token无效或仓库私有');
-                        } else if (res.status === 401) {
-                            throw new Error('未授权（401）：token验证失败');
-                        } else {
-                            throw new Error(`请求失败（${res.status}）：服务器错误`);
-                        }
-                    }
-                    
-                    const files = await res.json();
-                    const jsonFiles = files.filter(file => file.name.endsWith('.json'));
-                    console.log(`发现${jsonFiles.length}个留言文件`);
-                    
-                    if (jsonFiles.length === 0) {
-                        allMessages = [];
-                        if (dom.messagesList) {
-                            dom.messagesList.innerHTML = `
-                                <div class="text-center py-10 bg-gray-50 rounded-lg">
-                                    <i class="fa fa-comment-o text-4xl text-gray-300 mb-3"></i>
-                                    <p class="text-gray-500">还没有留言，快来写下第一条吧！</p>
-                                </div>
-                            `;
-                        }
-                        if (dom.messageCount) dom.messageCount.textContent = '0 条留言';
-                        return;
-                    }
-                    
-                    // 加载并解析留言
-                    const messagesPromises = jsonFiles.map(file => 
-                        fetchWithTimeout(file.download_url, {}, 5000)
-                            .then(res => res.json())
-                            .then(msg => ({ ...msg, fileName: file.name }))
-                            .catch(err => {
-                                console.error(`加载留言${file.name}失败:`, err);
-                                return null;
-                            })
-                    );
-                    
-                    const messages = await Promise.all(messagesPromises);
-                    allMessages = messages.filter(Boolean);
-                    console.log(`成功加载${allMessages.length}条留言`);
-                    
-                    sortMessages();
-                    if (dom.messageCount) dom.messageCount.textContent = `${allMessages.length} 条留言`;
-                    currentPage = 1;
-                    displayMessages();
-                    initLazyLoading(); // 初始化懒加载
-                    
-                } catch (e) {
-                    console.error('加载留言失败:', e);
-                    if (dom.messagesList) {
-                        dom.messagesList.innerHTML = `
-                            <div class="text-center py-10 bg-red-50 rounded-lg">
-                                <i class="fa fa-exclamation-triangle text-4xl text-red-300 mb-3"></i>
-                                <p class="text-red-700 mb-2">${e.message}</p>
-                                <button onclick="loadAllMessages()" class="mt-3 px-4 py-2 bg-primary text-white rounded hover:bg-primary/90">
-                                    重试加载
-                                </button>
-                            </div>
-                        `;
-                    }
-                    if (dom.loadMoreBtn) {
-                        dom.loadMoreBtn.disabled = false;
-                        dom.loadMoreBtn.innerHTML = '<i class="fa fa-refresh mr-2"></i>重试加载';
-                    }
-                }
-            }
-            
-            // 排序留言
-            function sortMessages() {
-                allMessages.sort((a, b) => {
-                    const timeA = new Date(a.timestamp).getTime();
-                    const timeB = new Date(b.timestamp).getTime();
-                    return sortOrder === 'newest' ? timeB - timeA : timeA - timeB;
-                });
-            }
-            
-            // 【核心优化5：显示留言（使用懒加载和缩略图）】
-            function displayMessages() {
-                if (!dom.messagesList || !dom.loadMoreBtn) return;
-                
-                if (allMessages.length === 0) {
-                    dom.messagesList.innerHTML = `
-                        <div class="text-center py-10 bg-gray-50 rounded-lg">
-                            <i class="fa fa-comment-o text-4xl text-gray-300 mb-3"></i>
-                            <p class="text-gray-500">还没有留言，快来写下第一条吧！</p>
-                        </div>
-                    `;
-                    dom.loadMoreBtn.disabled = true;
-                    dom.loadMoreBtn.innerHTML = '<i class="fa fa-check mr-2"></i>没有更多留言';
-                    return;
-                }
-                
-                const start = (currentPage - 1) * messagesPerPage;
-                const end = start + messagesPerPage;
-                const currentMessages = allMessages.slice(start, end);
-                
-                if (currentPage === 1) dom.messagesList.innerHTML = '';
-                
-                currentMessages.forEach(msg => {
-                    const el = document.createElement('div');
-                    el.className = 'bg-white rounded-xl shadow-md p-4 sm:p-6 hover:shadow-lg transition-shadow message-appear';
-                    
-                    let content = `<div class="text-gray-700 whitespace-pre-line">${escapeHtml(msg.message)}</div>`;
-                    if (msg.imageUrl) {
-                        // 使用缩略图懒加载（优先加载小图）
-                        const thumbnailUrl = msg.thumbnailUrl || msg.imageUrl; // 优先用缩略图
-                        content += `
-                            <div class="mt-3 rounded-lg overflow-hidden border border-gray-100">
-                                <div class="image-skeleton w-full" style="padding-top: 56.25%;"> <!-- 16:9比例占位 -->
-                                    <img 
-                                        data-src="${thumbnailUrl}" 
-                                        class="lazy-load image-preview absolute top-0 left-0 w-full h-full" 
-                                        alt="留言图片"
-                                        onclick="openImageModal('${msg.imageUrl}')"
-                                    >
-                                </div>
-                            </div>
-                        `;
-                    }
-                    
-                    el.innerHTML = `
-                        <div class="flex items-start justify-between mb-4">
-                            <div class="flex items-center">
-                                <div class="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-bold mr-3">
-                                    ${msg.name.charAt(0).toUpperCase()}
-                                </div>
-                                <div>
-                                    <h3 class="font-semibold text-gray-900">${escapeHtml(msg.name)}</h3>
-                                </div>
-                            </div>
-                            <span class="text-sm text-gray-400">${formatDate(msg.timestamp)}</span>
-                        </div>
-                        ${content}
-                    `;
-                    dom.messagesList.appendChild(el);
-                });
-                
-                // 更新加载更多按钮
-                if (end >= allMessages.length) {
-                    dom.loadMoreBtn.disabled = true;
-                    dom.loadMoreBtn.innerHTML = '<i class="fa fa-check mr-2"></i>没有更多留言';
+                    dom.loadMoreBtn.classList.add('opacity-50', 'cursor-not-allowed');
                 } else {
-                    dom.loadMoreBtn.disabled = false;
                     dom.loadMoreBtn.innerHTML = '<i class="fa fa-refresh mr-2"></i>加载更多';
+                    dom.loadMoreBtn.disabled = false;
+                    dom.loadMoreBtn.classList.remove('opacity-50', 'cursor-not-allowed');
                 }
-                
-                // 重新初始化懒加载（针对新加载的留言）
-                initLazyLoading();
             }
-            
-            // 工具函数
+
+            // 绑定加载更多事件
+            if (dom.loadMoreBtn) {
+                dom.loadMoreBtn.addEventListener('click', () => {
+                    currentPage++;
+                    loadMessages(currentPage);
+                });
+            }
+
+            // 工具函数：超时请求
+            function fetchWithTimeout(url, options, timeout = 10000) {
+                return Promise.race([
+                    fetch(url, options),
+                    new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('请求超时')), timeout)
+                    )
+                ]);
+            }
+
+            // 工具函数：格式化日期
             function formatDate(dateStr) {
                 return new Intl.DateTimeFormat('zh-CN', {
                     year: 'numeric', month: 'long', day: 'numeric',
                     hour: '2-digit', minute: '2-digit'
                 }).format(new Date(dateStr));
             }
-            
+
+            // 工具函数：防XSS
             function escapeHtml(str) {
                 return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
                     .replace(/"/g, '&quot;').replace(/'/g, '&#039;');
             }
-            
+
             function showError(msg, tips) {
                 if (dom.errorMessage && dom.errorTips && dom.errorAlert) {
                     dom.errorMessage.textContent = msg;
@@ -967,7 +975,7 @@
                     setTimeout(() => dom.errorAlert.classList.add('hidden'), 8000);
                 }
             }
-            
+
             function showSuccess(msg) {
                 if (dom.successMessage && dom.successAlert) {
                     dom.successMessage.textContent = msg;
@@ -975,14 +983,14 @@
                     setTimeout(() => dom.successAlert.classList.add('hidden'), 3000);
                 }
             }
-            
+
             // 暴露全局函数
-            window.loadAllMessages = loadAllMessages;
+            window.loadMessages = loadMessages;
             window.openImageModal = openImageModal;
             
             // 初始化
             initImageModal();
-            loadAllMessages();
+            loadMessages(1); // 初始加载第一页
         });
     </script>
 </body>
